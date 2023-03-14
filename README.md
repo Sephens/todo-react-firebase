@@ -194,7 +194,39 @@ const Todo = ({ todo }) => {
 export default Todo
 ```
 
+import the Todo component in the CreateTodo like this:
+
+`import Todo from "./Todo";`
+
 ### Using Firebase
+Now, we will start setting up Firebase for the back end. For that we will first install all
+dependencies for Firebase in the terminal by running the following command:
+
+`npm i firebase`
+
+Next, we will update our firebase.js file to use the config to initialize the app. After
+that, we use Firestore as the database.
+
+```
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+const firebaseConfig = {
+  ...
+  ...
+};
+
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = app.firestore()
+const auth = firebase.auth();
+export { db, auth }
+
+```
+
+Now, we will go back to Firebase and click Cloud Firestore and then click the Create
+database button.
+On the next screen, select Start in test mode and then click the Next button. On the next screen, click the Enable button.
 
 
 
@@ -205,3 +237,162 @@ the snapshot. In Firebase terms, it is the live data, which we will get instantl
 then set this data in the todos array, via setTodos().
 Also, notice that useEffect has input inside the array. So, any time a todo is added
 by the user, it will instantly display in our app.
+
+Now, we will add the functionality so the user can add the to-do item. For this we just
+need to add the input to the collection, using add(). Also, notice that we are adding the
+server timestamp, while adding a to-do. We are doing this because we need to order the
+to-dos in descending order.
+
+Now, we also want to get the ID of each item that we require for the key and also for
+deleting, which we are going to implement. The key is essential in React for optimization,
+and we also get a warning in the console. So, we need to change the structure in which
+we set the data in setTodos().
+Now, we are mapping through it in a different way, specifically when we are passing
+the single item to a Todo component.
+
+```
+function CreateTodo() {
+  const [todos, setTodos] = useState([]);
+  const [input, setInput] = useState("");
+
+  useEffect(() => {
+    db.collection("todos")
+      .orderBy("timestamp", "desc")
+      .onSnapshot((snapshot) => {
+        setTodos(
+          snapshot.docs.map((doc) => ({
+            id: doc.id,
+            item: doc.data(),
+          }))
+        );
+      });
+  }, [input]);
+
+  const addTodo = (e) => {
+    e.preventDefault();
+    // setTodos([...todos,input])
+    db.collection("todos").add({
+      todos: input,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    setInput("");
+  };
+  return (
+    <>
+      <h1>My TODO App</h1>
+      <form>
+        <FormControl>
+          <InputLabel>Add TODO</InputLabel>
+          <Input value={input} onChange={(e) => setInput(e.target.value)} />
+        </FormControl>
+        <Button
+          type="submit"
+          onClick={addTodo}
+          color="primary"
+          variant="contained"
+          disabled={!input}
+        >
+          Add
+        </Button>
+      </form>
+      <ul>
+        {todos.map((it) => (
+          <Todo key={it.id} arr={it} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+export default CreateTodo;
+```
+
+Now, in the Todo.js file, we are getting a different structure, and we are updating our
+file for that.
+We have also added the delete functionality, in which we have to get the ID of the
+item and call the delete().
+
+```
+function Todo({ arr }) {
+  return (
+    <List className="todo__list">
+      <ListItem>
+        <ListItemAvatar />
+        <ListItemText primary={arr.item.todo} secondary={arr.item.todo} />
+        <DeleteForeverIcon fontSize='large'
+          onClick={() => {
+            db.collection("todos").doc(arr.id).delete();
+          }}
+        />
+      </ListItem>
+    </List>
+  );
+}
+export default Todo;
+```
+
+import the CreateTodo component in the App.js like this:
+
+`import CreateTodo from './components/CreateTodo'`
+
+### A little bit of Styling
+Next, in the App.css file, remove everything and insert the content shown here:
+```
+.app {
+    display:grid;
+    place-items: center;
+}
+```
+Now, in the Todo.js file, add the import for the Todo.css file. Also, set fontSize to
+large for the Delete icon. The updated code is marked in bold here:
+```
+import './Todo.css'
+const Todo = ({ arr }) => {
+    return (
+    <List className="todo__list">
+             ...
+    <DeleteForeverIcon fontSize='large'
+             onClick={() => {db.collection('todos').doc(arr.id).delete()}}
+    />
+    </List>
+    )
+}
+```
+
+Next, in the Todo.css file, add the following content:
+```
+.todo__list{
+    display:flex;
+    justify-content: center;
+    align-items: center;
+    width: 800px;
+    border: 1px solid lightgray;
+    margin-bottom: 10px !important;
+}
+```
+
+### Deploying Firebase
+
+In the project directory,
+Now run `firebase login` from the terminal. If you are running it for the first time, it
+will give you a pop-up message. After that, run the `firebase init` command. Type Y to
+proceed.
+
+Next, go down to Hosting using the arrow keys, press the spacebar to select Hosting,
+and then press Enter. Then select Use an existing project and press Enter. Choose the project and Enter.
+
+Next, choose the public directory, which is build. The next option is Yes for a single-­
+page app and GitHub deploys, where you select No.
+
+Now, you need to run npm run build in the terminal for a production-optimal build,
+with this command:
+
+`npm run build`
+
+The final command is firebase deploy to deploy the project to Firebase, as shown
+here:
+
+`firebase deploy`
+
+<h1>And That is all, I hope you enjoyed!!</h1>
+
